@@ -4,8 +4,12 @@
 
 #include "log.h"
 
+#include <opencv2/core/version.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#if CV_VERSION_MAJOR >= 5
+#include <opencv2/geometry.hpp>
+#endif
 #include <pixman.h>
 #include <stdint.h>
 #include <stdlib.h>
