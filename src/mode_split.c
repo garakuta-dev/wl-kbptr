@@ -334,16 +334,16 @@ static bool split_mode_key(
     case 'h':
         return split_mode_split(state, mode_state, SPLIT_DIR_LEFT);
 
+    case 'n':
     case 'd':
-    case 'l':
         return split_mode_split(state, mode_state, SPLIT_DIR_RIGHT);
 
+    case 't':
     case 'w':
-    case 'k':
         return split_mode_split(state, mode_state, SPLIT_DIR_UP);
 
+    case 'k':
     case 's':
-    case 'j':
         return split_mode_split(state, mode_state, SPLIT_DIR_DOWN);
     }
 
