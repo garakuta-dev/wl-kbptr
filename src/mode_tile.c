@@ -154,59 +154,54 @@ void tile_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
     char label_selected_str[label_str_max_len];
     char label_unselected_str[label_str_max_len];
 
-    for (int i = 0; i < ms->sub_area_columns; i++) {
-        for (int j = 0; j < ms->sub_area_rows; j++) {
-            const int x =
-                i * ms->sub_area_width + min(i, ms->sub_area_width_off);
-            const int w =
-                ms->sub_area_width + (i < ms->sub_area_width_off ? 1 : 0);
-            const int y =
-                j * ms->sub_area_height + min(j, ms->sub_area_height_off);
-            const int h =
-                ms->sub_area_height + (j < ms->sub_area_height_off ? 1 : 0);
+    int num_sub_areas = ms->sub_area_columns * ms->sub_area_rows;
+    for (int i = 0; i < num_sub_areas; i++) {
+        struct rect area = idx_to_rect(ms, i, 0, 0);
+        const bool  selectable =
+            label_selection_is_included(curr_label, ms->label_selection);
 
-            const bool selectable =
-                label_selection_is_included(curr_label, ms->label_selection);
+        cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+        if (selectable) {
+            cairo_set_source_u32(cairo, config->selectable_bg_color);
+            cairo_rectangle(cairo, area.x, area.y, area.w, area.h);
+            cairo_fill(cairo);
 
-            cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-            if (selectable) {
-                cairo_set_source_u32(cairo, config->selectable_bg_color);
-                cairo_rectangle(cairo, x, y, w, h);
-                cairo_fill(cairo);
+            cairo_set_source_u32(cairo, config->selectable_border_color);
+            cairo_rectangle(
+                cairo, area.x + .5, area.y + .5, area.w - 1, area.h - 1
+            );
+            cairo_set_line_width(cairo, 1);
+            cairo_stroke(cairo);
 
-                cairo_set_source_u32(cairo, config->selectable_border_color);
-                cairo_rectangle(cairo, x + .5, y + .5, w - 1, h - 1);
-                cairo_set_line_width(cairo, 1);
-                cairo_stroke(cairo);
+            cairo_text_extents_t te_all;
+            label_selection_str(curr_label, label_selected_str);
+            cairo_text_extents(cairo, label_selected_str, &te_all);
 
-                cairo_text_extents_t te_all;
-                label_selection_str(curr_label, label_selected_str);
-                cairo_text_extents(cairo, label_selected_str, &te_all);
+            label_selection_str_split(
+                curr_label, label_selected_str, label_unselected_str,
+                ms->label_selection->next
+            );
 
-                label_selection_str_split(
-                    curr_label, label_selected_str, label_unselected_str,
-                    ms->label_selection->next
-                );
+            cairo_text_extents_t te_selected, te_unselected;
+            cairo_text_extents(cairo, label_selected_str, &te_selected);
+            cairo_text_extents(cairo, label_unselected_str, &te_unselected);
 
-                cairo_text_extents_t te_selected, te_unselected;
-                cairo_text_extents(cairo, label_selected_str, &te_selected);
-                cairo_text_extents(cairo, label_unselected_str, &te_unselected);
-
-                // Centers the label.
-                cairo_move_to(
-                    cairo,
-                    x + (w - te_selected.x_advance - te_unselected.x_advance) /
-                            2,
-                    y + (int)((h + te_all.height) / 2)
-                );
-                cairo_set_source_u32(cairo, config->label_select_color);
-                cairo_show_text(cairo, label_selected_str);
-                cairo_set_source_u32(cairo, config->label_color);
-                cairo_show_text(cairo, label_unselected_str);
-            }
-
-            label_selection_incr(curr_label);
+            // Centers the label.
+            cairo_move_to(
+                cairo,
+                area.x +
+                    (area.w - te_selected.x_advance -
+                     te_unselected.x_advance) /
+                        2,
+                area.y + (int)((area.h + te_all.height) / 2)
+            );
+            cairo_set_source_u32(cairo, config->label_select_color);
+            cairo_show_text(cairo, label_selected_str);
+            cairo_set_source_u32(cairo, config->label_color);
+            cairo_show_text(cairo, label_unselected_str);
         }
+
+        label_selection_incr(curr_label);
     }
 
     label_selection_free(curr_label);
