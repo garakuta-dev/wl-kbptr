@@ -5,6 +5,7 @@
 #include "log.h"
 #include "utils.h"
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,12 +18,19 @@ label_symbols_t *label_symbols_from_str(char *s) {
 
     int len         = sizeof(label_symbols_t);
     int num_symbols = 0;
+    int str_offset  = 0;
 
     while ((c_len = str_to_rune(c, &r)) > 0) {
+        if (str_offset > UCHAR_MAX) {
+            LOG_ERR("Label symbols are too long.");
+            return NULL;
+        }
+
         // One byte for the indices and one of the end of string (`\0`).
         c           += c_len;
         len         += c_len + 2;
         num_symbols += 1;
+        str_offset  += c_len + 1;
     }
 
     if (c_len < 0) {
@@ -48,8 +56,8 @@ label_symbols_t *label_symbols_from_str(char *s) {
     unsigned char *indices     = (unsigned char *)label_symbols->data;
     char          *str         = &label_symbols->data[num_symbols];
 
-    c              = s;
-    int str_offset = 0;
+    c          = s;
+    str_offset = 0;
     for (int i = 0; i < num_symbols; i++) {
         c_len      = str_to_rune(c, &r);
         indices[i] = str_offset;
@@ -89,15 +97,17 @@ int label_symbols_find_idx(label_symbols_t *label_symbols, char *s) {
 
 label_selection_t *
 label_selection_new(label_symbols_t *label_symbols, int num_labels) {
-    label_selection_t *l = malloc(sizeof(*l) + label_symbols->num_symbols);
+    unsigned char len = 1;
+    int           n   = num_labels - 1;
+
+    while ((n /= label_symbols->num_symbols) > 0) {
+        len++;
+    }
+
+    label_selection_t *l = malloc(sizeof(*l) + len);
 
     l->num_labels = num_labels;
-
-    l->len = 0;
-    while (num_labels > 0) {
-        l->len++;
-        num_labels /= label_symbols->num_symbols;
-    }
+    l->len        = len;
 
     l->next          = 0;
     l->label_symbols = label_symbols;
@@ -123,7 +133,7 @@ static int label_selection_to_partial_idx(label_selection_t *label_selection) {
 
 enum label_selection_append_ret
 label_selection_append(label_selection_t *label_selection, int idx) {
-    if (label_selection->next >= label_selection->label_symbols->num_symbols) {
+    if (label_selection->next >= label_selection->len) {
         return LABEL_SELECTION_APPEND_FULL;
     }
 
